@@ -43,6 +43,15 @@ class Gallery
 
 	/**
 	* Generate a listing of document galleries
+	* ギャラリーモードのカスタマイズ
+	* １）limitパラメータがsite_contet対象のため、写真が含まれない投稿もカウントされて正確なリストアップがされない
+		 => サブクエリでギャラリーテーブルにcontent_idがあることを条件に追加
+		 
+	* ２）docIdパラメータが複数時にうまく機能しない
+		 => 配列に変換する必要が無いのにしているので修正
+	
+	* ３）テンプレート変数によるフィルタをかけたい
+		=> 時間が無いので、とりあえず全テンプレート変数を対象にキーワードマッチするオプションを追加
 	*/
 	function renderGalleries()
 	{
@@ -86,9 +95,26 @@ class Gallery
 
 		// Retrieve list of documents under the requested id
 		$filter = " WHERE deleted = '0' AND published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'";
+		//------------------------------where句にギャラリーテーブルチェックをデフォルトで追加。
+		$filter .= " AND id = (SELECT MIN(content_id) FROM ". $modx->getFullTableName($this->galleriesTable) ." WHERE content_id = " . $modx->getFullTableName('site_content') .".id )";
+		//-------------------------------
+
+		
+
+		
 		if (!empty($docSelect))
 			$filter.=' AND '.$docSelect;
-	
+
+		//フィルターで与えられたワードがテンプレート変数内に存在するかチェックする。とりあえず全テンプレート変数内に該当キーワードが含まれるかチェック*******TODO*********もっとエレガントにできるはず。
+		if ($this->config['filter'])
+			$filter .= " OR ( id = (SELECT MIN(contentid) FROM ". $modx->getFullTableName('site_tmplvar_contentvalues') ." WHERE contentid = " . $modx->getFullTableName('site_content') .".id AND value LIKE '%" . $this->config['filter'] ."%') AND published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'" . ")";
+
+		//ANDフィルターで与えられたワードがテンプレート変数内に存在するかチェックする。とりあえず全テンプレート変数内に該当キーワードが含まれるかチェック*******TODO*********もっとエレガントにできるはず。
+		if ($this->config['andFilter'])
+			$filter .= " AND ( id = (SELECT MIN(contentid) FROM ". $modx->getFullTableName('site_tmplvar_contentvalues') ." WHERE contentid = " . $modx->getFullTableName('site_content') .".id AND value LIKE '%" . $this->config['andFilter'] ."%') AND published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'" . ")";
+
+
+
 		if ($this->config['paginate']) {
 			//Retrieve total records
 			$totalRows = $modx->db->getValue('select count(*) from '.$modx->getFullTableName('site_content').$filter);
@@ -374,12 +400,27 @@ class Gallery
 	*  Return string with limit values for SQL query
 	*/
 	function paginate($totalRows) {
+
 		global $modx;
 		if (!$this->config['paginate'])
 			return "";
 
 		$pageUrl = !empty($this->config['id'])?$this->config['id'].'_page':'page';
 		$page = isset($_GET[$pageUrl])?intval($_GET[$pageUrl]):1;
+
+		//クエリストリングに$pageUrl以外が含まれている場合、そのクエリは残してページリンクを生成できるように$QSに保存する。
+		$arrQS = array();
+		$QS ="";
+		if(isset($_GET)){
+			$arrQS = $_GET;
+			if(isset($arrQS[$pageUrl])){ unset($arrQS[$pageUrl]);}
+			foreach($arrQS as $key => $value){
+				$QS .= (($QS != "") ? "&":"") . $key . '=' . $value;
+			}
+			unset($arrQS);
+		}
+		//ここまで
+
 		$rowsPerPage = $this->config['show'];
 		$totalPages = ceil($totalRows/$rowsPerPage);
 		$previous = $page - 1;
@@ -403,7 +444,7 @@ class Gallery
 			$previoustpl = 'tplPaginatePreviousOff';
 		if (!empty($previoustpl))
 			$previousplaceholder = $this->processTemplate($this->config[$previoustpl],
-															array('url'=>$modx->makeUrl($modx->documentIdentifier,'',($previous!=1?"$pageUrl=$previous":"")),
+															array('url'=>$modx->makeUrl($modx->documentIdentifier,'',($previous!=1?"$pageUrl=$previous":"").($QS!=""?"&".$QS:"")),//$QS追加
 																'PaginatePreviousText'=>$this->config['paginatePreviousText']));			
 		$nexttpl = '';
 		$nextplaceholder = '';
@@ -413,14 +454,14 @@ class Gallery
 			$nexttpl = 'tplPaginateNextOff';
 		if (!empty($nexttpl))
 			$nextplaceholder = $this->processTemplate($this->config[$nexttpl],
-														array('url'=>$modx->makeUrl($modx->documentIdentifier,'',($next!=1?"$pageUrl=$next":"")),
+														array('url'=>$modx->makeUrl($modx->documentIdentifier,'',($next!=1?"$pageUrl=$next":"").($QS!=""?"&".$QS:"")),//$QS追加
 																'PaginateNextText'=>$this->config['paginateNextText']));			
 
 		$pages = '';
 		for ($i=1;$i<=$totalPages;$i++) {
 			if ($i != $page) {
 				$pages .= $this->processTemplate($this->config['tplPaginatePage'],
-												array('url'=>$modx->makeUrl($modx->documentIdentifier,'',($i!=1?"$pageUrl=$i":"")),'page'=>$i));
+												array('url'=>$modx->makeUrl($modx->documentIdentifier,'',($i!=1?"$pageUrl=$i":"").($QS!=""?"&".$QS:"")),'page'=>$i));//$QS追加
 			} else {
 				$modx->setPlaceholder($this->config['id']."currentPage", $i);
 				$pages .= $this->processTemplate($this->config['tplPaginateCurrentPage'], array('page'=>$i));
