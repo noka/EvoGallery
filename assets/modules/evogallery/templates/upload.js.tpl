@@ -1,51 +1,35 @@
-<script type="text/javascript" charset="utf-8">
-<!--
-$(document).ready(function(){
-	$("#uploadify").uploadify({
-		'uploader': '[+base_path+]js/uploadify/uploadify.swf',
-		'script': '[+base_path+]action.php',
-		'checkScript': '[+base_path+]check.php',
-		'scriptData': {[+params+],[+uploadparams+]},
-		'folder': '[+base_url+]assets/galleries/[+content_id+]',
-		'multi': true,
-		'fileDesc': '[+lang.image_files+]',
-		'fileExt': '*.jpg;*.png;*.gif',
-		'simUploadLimit': 2,
-		'sizeLimit': [+upload_maxsize+],
-		'buttonText': '[+lang.select_files+]',
-		'cancelImg': '[+base_path+]js/uploadify/cancel.png',
-		'onComplete': function(event, queueID, fileObj, response, data) {
-            var info = eval('(' + response + ')');
-            if (info['result']=='ok') {
-				var onlygallery = $.urlParam('onlygallery', location.href)=='1'?"&onlygallery=1":"";
-				$('#uploadList').append("<li><div class=\"thbSelect\"><a class=\"select\" href=\"#\">[+lang.select+]</a></div><div class=\"thbButtons\"><a href=\"" + unescape('[+self+]') + "&action=edit&content_id=[+content_id+]&edit=" + info['id'] + onlygallery + "\" class=\"edit\">[+lang.edit+]</a><a href=\"" + unescape('[+self+]') + "&delete=" + info['id'] + "\" class=\"delete\">[+lang.delete+]</a></div><img src=\"" + unescape('[+thumbs+]') + encodeURI(info['filename']) + "\" alt=\"" + info['filename'] + "\" class=\"thb\" /><input type=\"hidden\" name=\"sort[]\" value=\"" + info['id'] + "\" /></li>");
-			}	
-			else
-				alert('[+lang.upload_failed+]: ' + info['msg']);
-        },
-        'onAllComplete': function(){
-            $(".thbButtons").hide();
-            $("li").not('.selected').children(".thbSelect").hide();
-			if (!$("#uploadList li").length) {
-				$("#selectallcontrols").hide();
-				$("#sortcontrols").hide();
-			}	
+<script>
+/*setup for dropzone.js*/
+Dropzone.autoDiscover = false;
+
+$(function(){
+
+    /*Dropzone*/
+    var imageDropzone = new Dropzone("#dropzone",{
+          paramName: "Filedata",  // The name that will be used to transfer the file
+          url:'[+base_path+]action.php',
+          maxFilesize:  [+upload_maxsize+], // MB
+          /* accept rule*/
+          acceptedFiles:"[+upload_images+]",
+          /*notuse autoupload*/
+          autoProcessQueue:false,
+          addRemoveLinks:true,
         }
-	});
+    );
+    imageDropzone.on("success",function(file){window.location.reload();});
+
+    $('#excute').click(function(){
+        imageDropzone.processQueue() ;
+    });
+
+
+
 
 	$.urlParam = function(name, link){
 		var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(link);
 		return (results && results[1]) || 0;
 	}
 
-    $('#uploadFiles').click(function(){
-        $('#uploadify').uploadifyUpload();
-        return false;
-    });
-    $('#clearQueue').click(function(){
-        $('#uploadify').uploadifyClearQueue();
-        return false;
-    });
 	if($('#uploadList').length > 0){
         $(".thbButtons").hide();
         $(".thbSelect").hide();
@@ -90,32 +74,6 @@ $(document).ready(function(){
                 onLoad: function(){
                     $("#cmdsave").click(function(){
                         overlay.close();
-                    });
-                	$("#newimage").uploadify({
-                		'uploader': '[+base_path+]js/uploadify/uploadify.swf',
-                		'script': '[+base_path+]action.php',
-                		'checkScript': '[+base_path+]check.php',
-                		'scriptData': {[+params+], [+uploadparams+], 'edit': $.urlParam('edit',link)},
-                		'folder': '[+base_url+]assets/galleries/[+content_id+]',
-                		'multi': false,
-                		'fileDesc': '[+lang.image_files+]',
-                		'fileExt': '*.jpg;*.png;*.gif',
-                		'simUploadLimit': 2,
-                		'sizeLimit': [+upload_maxsize+],
-						'buttonText': '[+lang.browse_file+]',
-                   		'cancelImg': '[+base_path+]js/uploadify/cancel.png',
-                		'onComplete': function(event, queueID, fileObj, response, data) {
-							var info = eval('(' + response + ')');
-							if (info['result']=='ok')
-								$('.thumbPreview').empty().append('<img class="newimage" src="' + unescape('[+thumbs+]') + encodeURI(info['filename']) + '" alt="' + info['filename'] + '" />');
-							else
-								alert('[+lang.upload_failed+]: ' + info['msg']);
-
-                        }
-               	    });
-                    $('#newimageupload').click(function(){
-                        $('#newimage').uploadifyUpload();
-                        return false;
                     });
                 }
             });

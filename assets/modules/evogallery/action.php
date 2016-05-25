@@ -1,16 +1,7 @@
 <?php
-$path_to_modx_config = '../../../manager/includes/config.inc.php';
-
-include_once($path_to_modx_config);
-
-if (isset($_REQUEST[$site_sessionname]))
-	session_id($_REQUEST[$site_sessionname]); //without this always generate new session
-
-startCMSSession();
-
-include_once "../../../manager/includes/document.parser.class.inc.php";
-$modx = new DocumentParser;
-$modx->loadExtension("ManagerAPI");
+define('MODX_API_MODE', true);
+define('IN_MANAGER_MODE', true);
+include('../../../index.php');
 $modx->getSettings();
 
 // get module data
@@ -35,12 +26,12 @@ include_once('classes/management.class.inc.php');
 
 if (class_exists('GalleryManagement'))
 {
-	$manager = new GalleryManagement($parameters);
+	$manager = new GalleryManagement($parameters,$modx);
 	if (!$_SESSION['mgrValidated'])
 	{
 		echo json_encode(array('result'=>'error','msg'=>$manager->lang['access_denied']));
 		die;
-	}	
+	}
 	$res = $manager->executeAction();
 	if ($res===TRUE)
 		echo json_encode(array('result'=>'ok'));
@@ -50,6 +41,3 @@ if (class_exists('GalleryManagement'))
 }	
 else
 	$modx->logEvent(1, 3, 'Error loading Portfolio Galleries management module');
-
-
-?>

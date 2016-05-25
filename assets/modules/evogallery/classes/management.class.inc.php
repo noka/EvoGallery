@@ -21,17 +21,17 @@
 class GalleryManagement
 {
 	var $config;  // Array containing module configuration values
+    var $modx;
 
 	/**
 	* Class constructor, set configuration parameters
 	*/
-	function GalleryManagement($params)
+	function __construct($params,&$modx)
 	{
-		global $modx;
-
+        	$this->modx = $modx;
 		$this->config = $params;
-		$this->config['urlPath'] = $modx->config['base_url'].rtrim($this->config['savePath'],'/');
-		$this->config['savePath'] = $modx->config['base_path'].rtrim($this->config['savePath'],'/');
+		$this->config['urlPath'] = $this->modx->config['base_url'].rtrim($this->config['savePath'],'/');
+		$this->config['savePath'] = $this->modx->config['base_path'].rtrim($this->config['savePath'],'/');
 
 		$this->mainTemplate = 'template.html.tpl';
 		$this->headerTemplate = 'header.html.tpl';
@@ -42,7 +42,7 @@ class GalleryManagement
 
 		$this->galleriesTable = 'portfolio_galleries';
 
-		$this->current = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $modx->config['base_url'] . 'manager/index.php';
+		$this->current = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $this->modx->config['base_url'] . 'manager/index.php';
 		$this->a = $_GET['a'];
 		$this->id = $_GET['id'];
 		
@@ -54,10 +54,7 @@ class GalleryManagement
 	*/
 	function execute()
 	{
-		global $modx;
-
 		$old_umask = umask(0);
-
 
 		if (isset($_GET['edit']))
 		{
@@ -74,14 +71,13 @@ class GalleryManagement
 			// Get contents of js script and replace necessary action URL
 			$tplparams = array(
 				'params' => '"id": "' . $this->id . '", "a": "' . $this->a . '", "' . session_name() . '": "' . session_id() . '"',
-				'base_path' => $modx->config['base_url'] . 'assets/modules/evogallery/',
-				'base_url' => $modx->config['base_url'],
-				'content_id' => $content_id,
+				'base_path' => $this->modx->config['base_url'] . 'assets/modules/evogallery/',
+				'base_url' => $this->modx->config['base_url'],
 			);
 			$js = $this->processTemplate('js.tpl', $tplparams);
 
     		$tplparams = array(
-				'base_url' => $modx->config['base_url'],
+                	'base_url' => $this->modx->config['base_url'],
 				'content' => $output,
 				'js' => $js
 			);
@@ -100,22 +96,20 @@ class GalleryManagement
 	*/
 	function editImage()
 	{
-		global $modx;
-
 		$this_page = $this->current . '?a=' . $this->a . '&amp;id=' . $this->id;
 
 		$contentId = isset($_GET['content_id']) ? intval($_GET['content_id']) : $this->config['docId'];
-		$url = $modx->config['base_url'].$this->config['savePath'];
+		$url = $this->modx->config['base_url'].$this->config['savePath'];
 		$id = isset($_GET['edit']) ? intval($_GET['edit']) : '';
 
-		$result = $modx->db->select('id, filename, title, description, keywords', $modx->getFullTableName($this->galleriesTable), "id = '" . $id . "'");
-		$info = $modx->fetchRow($result);
+		$result = $this->modx->db->select('id, filename, title, description, keywords', $this->modx->getFullTableName($this->galleriesTable), "id = '" . $id . "'");
+		$info = $this->modx->fetchRow($result);
 
         /* Get keyword tags */
-		$sql = "SELECT `keywords` FROM ".$modx->getFullTableName($this->galleriesTable);
+		$sql = "SELECT `keywords` FROM ".$this->modx->getFullTableName($this->galleriesTable);
 
-		$keywords = $modx->dbQuery($sql);
-		$all_docs = $modx->db->makeArray( $keywords );
+		$keywords = $this->modx->dbQuery($sql);
+		$all_docs = $this->modx->db->makeArray( $keywords );
 
 		$foundTags = array();
 		foreach ($all_docs as $theDoc) {
@@ -131,7 +125,7 @@ class GalleryManagement
 		$lis = '';
 		foreach($foundTags as $t=>$c) {
 		    if($t != ''){
-    			$lis .= '<li title="'.sprintf($this->lang['used_times'],$c).'">'.htmlentities($t, ENT_QUOTES, $modx->config['modx_charset'], false).($display_count?' ('.$c.')':'').'</li>';
+    			$lis .= '<li title="'.sprintf($this->lang['used_times'],$c).'">'.htmlentities($t, ENT_QUOTES, $this->modx->config['modx_charset'], false).($display_count?' ('.$c.')':'').'</li>';
 		    }
 		}
 
@@ -158,8 +152,6 @@ class GalleryManagement
 	*/
 	function viewListing()
 	{
-		global $modx;
-
 		$this_page = $this->current . '?a=' . $this->a . '&id=' . $this->id;
 
 		$tplparams = array();
@@ -170,7 +162,7 @@ class GalleryManagement
 		$filter = '';
 		if (isset($_GET['query']))
 		{
-			$search = $modx->db->escape($modx->stripTags($_GET['query']));
+			$search = $this->modx->db->escape($this->modx->stripTags($_GET['query']));
 			$filter .= "WHERE (";
 			$filter .= "c.pagetitle LIKE '%" . $search . "%' OR ";
 			$filter .= "c.longtitle LIKE '%" . $search . "%' OR ";
@@ -208,18 +200,18 @@ class GalleryManagement
 		$table = new MakeTable();  // Instantiate a new instance of the MakeTable class
 
 		// Get document count
-		$query = "SELECT COUNT(c.id) FROM " . $modx->getFullTableName('site_content') . " AS c " . $filter;
-		$numRecords = $modx->db->getValue($query);
+		$query = "SELECT COUNT(c.id) FROM " . $this->modx->getFullTableName('site_content') . " AS c " . $filter;
+		$numRecords = $this->modx->db->getValue($query);
 
 		// Execute the main table query with MakeTable sorting and paging features
-		$query = "SELECT c.id, c.pagetitle, c.longtitle, c.editedon, c.isfolder, COUNT(g.id) as photos FROM " . $modx->getFullTableName('site_content') . " AS c " .
-		         "LEFT JOIN " . $modx->getFullTableName($this->galleriesTable) . " AS g ON g.content_id = c.id " .
+		$query = "SELECT c.id, c.pagetitle, c.longtitle, c.editedon, c.isfolder, COUNT(g.id) as photos FROM " . $this->modx->getFullTableName('site_content') . " AS c " .
+		         "LEFT JOIN " . $this->modx->getFullTableName($this->galleriesTable) . " AS g ON g.content_id = c.id " .
 		         $filter . " GROUP BY c.id" . $table->handleSorting() . $table->handlePaging();
 
-		if ($ds = $modx->db->query($query))
+		if ($ds = $this->modx->db->query($query))
 		{
 			// If the query was successful, build our table array from the rows
-			while ($row = $modx->db->getRow($ds))
+			while ($row = $this->modx->db->getRow($ds))
 			{
 				$documents[] = array(
 					'pagetitle' => '<a href="' . $this_page . '&action=view&content_id=' . $row['id'] . '" title="'.$this->lang['click_view_photos'].'">' . $row['pagetitle'] . ' (' . $row['id'] . ')</a>',
@@ -280,17 +272,15 @@ class GalleryManagement
 	*/
 	function viewGallery()
 	{
-		global $modx;
-
 		$this_page = $this->current . '?a=' . $this->a . '&id=' . $this->id;
 
 		$content_id = isset($_GET['content_id']) ? intval($_GET['content_id']) : $this->config['docId'];  // Get document id
 
 		// Verify session and retrieve document information
-		$result = $modx->db->select('pagetitle, longtitle, parent', $modx->getFullTableName('site_content'), "id = '" . $content_id . "'");
-		if ($modx->db->getRecordCount($result) > 0)
+		$result = $this->modx->db->select('pagetitle, longtitle, parent', $this->modx->getFullTableName('site_content'), "id = '" . $content_id . "'");
+		if ($this->modx->db->getRecordCount($result) > 0)
 		{
-			$info = $modx->fetchRow($result);
+			$info = $this->modx->fetchRow($result);
 
 			if (!isset($_GET['onlygallery']))
 			{
@@ -312,16 +302,16 @@ class GalleryManagement
 				{
 					$sortnum++; 
 					$id = intval($id);
-					$modx->db->update("sortorder='" . $sortnum . "'", $modx->getFullTableName($this->galleriesTable), "id='" . $id . "'");
+					$this->modx->db->update("sortorder='" . $sortnum . "'", $this->modx->getFullTableName($this->galleriesTable), "id='" . $id . "'");
 				}
 			}
 			elseif (isset($_GET['delete']))  // Delete requested image
 			{
 				$id = intval($_GET['delete']);
-				$rs = $modx->db->select('filename', $modx->getFullTableName($this->galleriesTable), "id='" . $id . "'");
-                if ($modx->db->getRecordCount($result) > 0)
+				$rs = $this->modx->db->select('filename', $this->modx->getFullTableName($this->galleriesTable), "id='" . $id . "'");
+                if ($this->modx->db->getRecordCount($result) > 0)
 				{
-					$filename = $modx->db->getValue($rs);
+					$filename = $this->modx->db->getValue($rs);
 
 					if (file_exists($target_dir . 'thumbs/' . $filename))
 						unlink($target_dir . 'thumbs/' . $filename);
@@ -331,7 +321,7 @@ class GalleryManagement
 						unlink($target_dir . $filename);
 
 					// Remove record from database
-					$modx->db->delete($modx->getFullTableName($this->galleriesTable), "id='" . $id . "'");
+					$this->modx->db->delete($this->modx->getFullTableName($this->galleriesTable), "id='" . $id . "'");
 				}
 			}
 			elseif (isset($_POST['edit']))  // Update image information
@@ -339,34 +329,47 @@ class GalleryManagement
 				$fields['title'] = isset($_POST['title']) ? addslashes($_POST['title']) : '';
 				$fields['description'] = isset($_POST['description']) ? addslashes($_POST['description']) : '';
 				$fields['keywords'] = isset($_POST['keywords']) ? addslashes($_POST['keywords']) : '';
-				$modx->db->update($fields, $modx->getFullTableName($this->galleriesTable), "id='" . intval($_POST['edit']) . "'");
+				$this->modx->db->update($fields, $this->modx->getFullTableName($this->galleriesTable), "id='" . intval($_POST['edit']) . "'");
 			}
 
 			// Get contents of upload script and replace necessary action URL
+            $allowImages=array();
+            foreach( explode(',',$this->modx->config['upload_images']) as $item){
+                if(strpos(trim($item),'.')===false){
+                    $allowImages[] = '.'.$item;
+                 }else{
+                    $allowImages[] = $item;
+                 }
+            }
+            $upload_images = implode(',',$allowImages);
+
 			$tplparams = array(
 				'self' => urlencode(html_entity_decode($this_page . '&content_id=' . $content_id)),
 				'action' => $this->current,
 				'params' => '"id": "' . $this->id . '", "a": "' . $this->a . '", "' . session_name() . '": "' . session_id() . '"',
 				'uploadparams' => '"action": "upload", "js": "1", "content_id": "' . $content_id . '"',
-				'base_path' => $modx->config['base_url'] . 'assets/modules/evogallery/',
-				'base_url' => $modx->config['base_url'],
+				'base_path' => $this->modx->config['base_url'] . 'assets/modules/evogallery/',
+				'base_url' => $this->modx->config['base_url'],
 				'content_id' => $content_id,
 				'thumbs' => $this->config['urlPath'] . '/' . $content_id . '/thumbs/',
-				'upload_maxsize' => $modx->config['upload_maxsize']
+				'upload_maxsize' => $this->modx->config['upload_maxsize'],
+				'upload_images' => $upload_images,
 			);
 
 			$upload_script = $this->processTemplate('upload.js.tpl', $tplparams);
 
 			$tplparams = array(
 				'title' => stripslashes($info['pagetitle']),
-				'upload_script' => $upload_script
+				'upload_script' => $upload_script,
+				'content_id' => $content_id,
+				'id' => $this->id,
 			);
 
 
 			// Read through project files directory and show thumbs
 			$thumbs = '';
-			$result = $modx->db->select('id, filename, title, description, keywords', $modx->getFullTableName($this->galleriesTable), 'content_id=' . $content_id, 'sortorder ASC');
-			while ($row = $modx->fetchRow($result))
+			$result = $this->modx->db->select('id, filename, title, description, keywords', $this->modx->getFullTableName($this->galleriesTable), 'content_id=' . $content_id, 'sortorder ASC');
+			while ($row = $this->modx->fetchRow($result))
 			{
 				$thumbs .= "<li><div class=\"thbSelect\"><a class=\"select\" href=\"#\">".$this->lang['select']."</a></div><div class=\"thbButtons\"><a href=\"" . $this_page . "&action=edit&content_id=$content_id&edit=" . $row['id'] . (isset($_GET['onlygallery'])?"&onlygallery=1":"") ."\" class=\"edit\">".$this->lang['edit']."</a><a href=\"$this_page&action=view&content_id=$content_id&delete=" . $row['id'] . "\" class=\"delete\">".$this->lang['delete']."</a></div><img src=\"" . $this->config['urlPath'] . '/' . $content_id . '/thumbs/' . rawurlencode($row['filename']) . "\" alt=\"" . htmlentities(stripslashes($row['filename'])) . "\" class=\"thb\" /><input type=\"hidden\" name=\"sort[]\" value=\"" . $row['id'] . "\" /></li>\n";
 			}
@@ -386,8 +389,6 @@ class GalleryManagement
 	*/
 	function header($title = '')
 	{
-		global $modx;
-
 		$this_page = $this->current . '?a=' . $this->a . '&id=' . $this->id;
 
 		$parentId = isset($_GET['content_id']) ? intval($_GET['content_id']) : $this->config['docId'];
@@ -398,12 +399,12 @@ class GalleryManagement
 			$search = '<label for="query">'.$this->lang['search'].':</label> <input type="text" name="query" id="query" />';
 
 		// Generate breadcrumbs
-		$result = $modx->db->select('id, pagetitle, parent', $modx->getFullTableName('site_content'), 'id=' . $parentId);
-		$row = $modx->fetchRow($result);
+		$result = $this->modx->db->select('id, pagetitle, parent', $this->modx->getFullTableName('site_content'), 'id=' . $parentId);
+		$row = $this->modx->fetchRow($result);
 		$breadcrumbs = '<a href="' . $this_page . '&action=view&content_id=' . $row['id'] . '" title="'.$this->lang['click_view_categories'].'">' . stripslashes($row['pagetitle']) . '</a>';
 		while ($row['id'] > $this->config['docId'])
 		{
-			$row = $modx->fetchRow($modx->db->select('id, pagetitle, parent', $modx->getFullTableName('site_content'), 'id=' . $row['parent']));
+			$row = $this->modx->fetchRow($this->modx->db->select('id, pagetitle, parent', $this->modx->getFullTableName('site_content'), 'id=' . $row['parent']));
 			$breadcrumbs = '<a href="' . $this_page . '&action=view&content_id=' . $row['id'] . '" title="'.$this->lang['click_view_categories'].'">' . stripslashes($row['pagetitle']) . '</a> &raquo; ' . $breadcrumbs;
 		}
 
@@ -430,8 +431,7 @@ class GalleryManagement
 	*/
 	function resizeImage($filename, $target, $params)
 	{
-		global $modx;
-		
+	
 		if (!class_exists('phpthumb'))
 		{
 			include 'classes/phpthumb/phpthumb.class.php';
@@ -454,7 +454,7 @@ class GalleryManagement
 			$phpthumb->setParameter('f',$ext);
 		else
 			$phpthumb->setParameter('f','jpeg');
-		$phpthumb->setParameter('config_document_root', rtrim($modx->config['base_path'],'/'));
+		$phpthumb->setParameter('config_document_root', rtrim($this->modx->config['base_path'],'/'));
 		foreach($params as $key=>$value)
 			$phpthumb->setParameter($key,$value);
 		$phpthumb->setSourceFilename($filename);
@@ -469,8 +469,7 @@ class GalleryManagement
 	*/
 	function checkGalleryTable()
 	{
-                global $modx;
-                $sql = "CREATE TABLE IF NOT EXISTS " . $modx->getFullTableName($this->galleriesTable) . " (" .
+                $sql = "CREATE TABLE IF NOT EXISTS " . $this->modx->getFullTableName($this->galleriesTable) . " (" .
 			"`id` int(11) NOT NULL auto_increment PRIMARY KEY, " .
 			"`content_id` int(11) NOT NULL, " .
 			"`filename` varchar(255) NOT NULL, " .
@@ -479,7 +478,7 @@ class GalleryManagement
 			"`keywords` TEXT NOT NULL, " .
 			"`sortorder` smallint(7) NOT NULL default '0'" .
                 ")";
-                $modx->db->query($sql);
+                $this->modx->db->query($sql);
     }
 		
 	/**
@@ -487,7 +486,6 @@ class GalleryManagement
 	*/
 	function loadLanguage()
 	{
-		global $modx;
 		$langpath = $this->config['modulePath'].'lang/';
 		//First load english lang by defaule
 		$fname = $langpath.'english.inc.php';
@@ -496,7 +494,7 @@ class GalleryManagement
 			include($fname);
 		}
 		//And now load current lang file
-		$fname = $langpath.$modx->config['manager_language'].'.inc.php';
+		$fname = $langpath.$this->modx->config['manager_language'].'.inc.php';
 		if (file_exists($fname))
 		{
 			include($fname);
@@ -529,7 +527,6 @@ class GalleryManagement
 	*/
 	function executeAction()
 	{
-		global $modx;
 		switch($_REQUEST['action'])
 		{
 			case 'upload':
@@ -537,7 +534,7 @@ class GalleryManagement
 				break;
 			case 'deleteall':
 				$mode = isset($_POST['mode'])?$_POST['mode']:'';
-				$ids = isset($_POST['action_ids'])?$modx->db->escape($_POST['action_ids']):'';
+				$ids = isset($_POST['action_ids'])?$this->modx->db->escape($_POST['action_ids']):'';
 				$ids = explode(',',$ids);
 				foreach($ids as $key=>$value)
 					$ids[$key] = intval($value);
@@ -545,7 +542,7 @@ class GalleryManagement
 				break;
 			case 'regenerateall':
 				$mode = isset($_POST['mode'])?$_POST['mode']:'';
-				$ids = isset($_POST['action_ids'])?$modx->db->escape($_POST['action_ids']):'';
+				$ids = isset($_POST['action_ids'])?$this->modx->db->escape($_POST['action_ids']):'';
 				$ids = explode(',',$ids);
 				foreach($ids as $key=>$value)
 					$ids[$key] = intval($value);
@@ -554,16 +551,16 @@ class GalleryManagement
 			case 'move':
 				$mode = isset($_POST['mode'])?$_POST['mode']:'';
 				$target = isset($_POST['target'])?intval($_POST['target']):0;
-				$ids = isset($_POST['action_ids'])?$modx->db->escape($_POST['action_ids']):'';
+				$ids = isset($_POST['action_ids'])?$this->modx->db->escape($_POST['action_ids']):'';
 				$ids = explode(',',$ids);
 				foreach($ids as $key=>$value)
 					$ids[$key] = intval($value);
 				return $this->moveImages($mode,$ids,$target);
 				break;
 			case 'getids':
-				$field = isset($_GET['field'])?$modx->db->escape($_GET['field']):'id';
+				$field = isset($_GET['field'])?$this->modx->db->escape($_GET['field']):'id';
 				$mode = isset($_GET['mode'])?$_GET['mode']:'';
-				$ids = isset($_GET['action_ids'])?$modx->db->escape($_GET['action_ids']):'';
+				$ids = isset($_GET['action_ids'])?$this->modx->db->escape($_GET['action_ids']):'';
 				$ids = explode(',',$ids);
 				foreach($ids as $key=>$value)
 					$ids[$key] = intval($value);
@@ -587,9 +584,8 @@ class GalleryManagement
 	* Check and create folders for images
 	*/
 	function makeFolders($target_dir) {
-		global $modx;
 
-		$new_folder_permissions = octdec($modx->config['new_folder_permissions']);
+		$new_folder_permissions = octdec($this->modx->config['new_folder_permissions']);
 		$keepOriginal = $this->config['keepOriginal']=='Yes';
 
 		if (!file_exists($target_dir))
@@ -600,12 +596,12 @@ class GalleryManagement
 			mkdir($target_dir . 'original', $new_folder_permissions);
 	}
 
+
 	/**
 	* Upload file
 	*/
 	function uploadFile()
 	{
-		global $modx;
 		
 		if (is_uploaded_file($_FILES['Filedata']['tmp_name'])){
 			$content_id = isset($_POST['content_id']) ? intval($_POST['content_id']) : $params['docId'];  // Get document id3_get_frame_long_name(string frameId)
@@ -618,17 +614,19 @@ class GalleryManagement
 			if ($this->config['randomFilenames']=='Yes') {
 				$target_fname = $this->getRandomString(8).'.'.$path_parts['extension'];
 			}
-			elseif ($modx->config['clean_uploaded_filename']) {
-				$target_fname = $modx->stripAlias($path_parts['filename']).'.'.$path_parts['extension'];
+			elseif ($this->modx->config['clean_uploaded_filename']) {
+				$target_fname = $this->modx->stripAlias($path_parts['filename']).'.'.$path_parts['extension'];
 			}
 			
 			$target_file = $target_dir . $target_fname;
 			$target_thumb = $target_dir . 'thumbs/' . $target_fname;
 			$target_original = $target_dir . 'original/' . $target_fname;
+            
 			
 			// Check for existence of document/gallery directories
 			$this->makeFolders($target_dir);
-	
+
+
 			$movetofile = $keepOriginal?$target_original:$target_dir.uniqid();
 			// Copy uploaded image to final destination
 			if (move_uploaded_file($_FILES['Filedata']['tmp_name'], $movetofile))
@@ -637,7 +635,7 @@ class GalleryManagement
 				$this->resizeImage($movetofile, $target_file, $this->getPhpthumbConfig($this->config['phpthumbImage']));  // Create and save main image
 				$this->resizeImage($movetofile, $target_thumb, $this->getPhpthumbConfig($this->config['phpthumbThumb']));  // Create and save thumb
 				
-				$new_file_permissions = octdec($modx->config['new_file_permissions']);
+				$new_file_permissions = octdec($this->modx->config['new_file_permissions']);
 				chmod($target_file, $new_file_permissions);
 				chmod($target_thumb, $new_file_permissions);
 				if ($keepOriginal)
@@ -652,7 +650,7 @@ class GalleryManagement
 				
 				// Delete existing image
 				$id = intval($_POST['edit']);
-				$oldfilename = $modx->db->getValue($modx->db->select('filename',$modx->getFullTableName('portfolio_galleries'),'id='.$id));
+				$oldfilename = $this->modx->db->getValue($this->modx->db->select('filename',$this->modx->getFullTableName('portfolio_galleries'),'id='.$id));
 				if(!empty($oldfilename) && $oldfilename !== $target_fname){
 					if (file_exists($target_dir . 'thumbs/' . $oldfilename))
 						unlink($target_dir . 'thumbs/' . $oldfilename);
@@ -664,27 +662,27 @@ class GalleryManagement
 				
 				// Update record in the database
 				$fields = array(
-					'filename' => $modx->db->escape($target_fname)
+					'filename' => $this->modx->db->escape($target_fname)
 				);
-				$modx->db->update($fields, $modx->getFullTableName('portfolio_galleries'), "id='".$id."'");
+				$this->modx->db->update($fields, $this->modx->getFullTableName('portfolio_galleries'), "id='".$id."'");
 				
 			} else
 			{
 				// Find the last order position
-				$rs = $modx->db->select('sortorder', $modx->getFullTableName('portfolio_galleries'), 'content_id="'.$content_id.'"', 'sortorder DESC', '1');
-				if ($modx->db->getRecordCount($rs) > 0)
-					$pos = $modx->db->getValue($rs) + 1;
+				$rs = $this->modx->db->select('sortorder', $this->modx->getFullTableName('portfolio_galleries'), 'content_id="'.$content_id.'"', 'sortorder DESC', '1');
+				if ($this->modx->db->getRecordCount($rs) > 0)
+					$pos = $this->modx->db->getValue($rs) + 1;
 				else
 					$pos = 1; 
 
 				// Create record in the database
 				$fields = array(
 					'content_id' => $content_id,
-					'filename' => $modx->db->escape($target_fname),
+					'filename' => $this->modx->db->escape($target_fname),
 					'sortorder' => $pos
 				);
-				$modx->db->insert($fields, $modx->getFullTableName('portfolio_galleries'));
-				$id = $modx->db->getInsertId();
+				$this->modx->db->insert($fields, $this->modx->getFullTableName('portfolio_galleries'));
+				$id = $this->modx->db->getInsertId();
 			}
 			
 			//return new filename
@@ -725,13 +723,12 @@ class GalleryManagement
 	*/
 	function deleteImages($mode = 'id', $ids = array())
 	{
-		global $modx;
 		$where = $this->getWhereClassByMode($mode, $ids);
 		if ($where===false)
 			return false;
 			
-		$ds = $modx->db->select('id, filename, content_id',$modx->getFullTablename($this->galleriesTable),$where);
-		while ($row = $modx->db->getRow($ds))
+		$ds = $this->modx->db->select('id, filename, content_id',$this->modx->getFullTablename($this->galleriesTable),$where);
+		while ($row = $this->modx->db->getRow($ds))
 		{
 			$target_dir = $this->config['savePath'].'/'.$row['content_id'].'/';
 			if (file_exists($target_dir . 'thumbs/' . $row['filename']))
@@ -741,7 +738,7 @@ class GalleryManagement
 			if (file_exists($target_dir . $row['filename']))
 				unlink($target_dir . $row['filename']);
 		}
-		$modx->db->delete($modx->getFullTablename($this->galleriesTable),$where);
+		$this->modx->db->delete($this->modx->getFullTablename($this->galleriesTable),$where);
 		return true;
 	}
 	
@@ -750,12 +747,11 @@ class GalleryManagement
 	*/
 	function regenerateImages($mode = 'id', $ids = array())
 	{
-		global $modx;
 		$where = $this->getWhereClassByMode($mode, $ids);
 		if ($where===false)
 			return false;
-		$ds = $modx->db->select('id, filename, content_id',$modx->getFullTablename($this->galleriesTable),$where);
-		while ($row = $modx->db->getRow($ds))
+		$ds = $this->modx->db->select('id, filename, content_id',$this->modx->getFullTablename($this->galleriesTable),$where);
+		while ($row = $this->modx->db->getRow($ds))
 		{
 			$target_dir = $this->config['savePath'].'/'.$row['content_id'].'/';
 			$orininal_file = $target_dir . 'original/' . $row['filename']; 
@@ -782,8 +778,8 @@ class GalleryManagement
 		$target_dir = $this->config['savePath'].'/'.$target.'/';
 		$this->makeFolders($target_dir);
 		
-		$ds = $modx->db->select('id, filename, content_id',$modx->getFullTablename($this->galleriesTable),$where);
-		while ($row = $modx->db->getRow($ds))
+		$ds = $this->modx->db->select('id, filename, content_id',$this->modx->getFullTablename($this->galleriesTable),$where);
+		while ($row = $this->modx->db->getRow($ds))
 		{
 			//Move files
 			$source_dir = $this->config['savePath'].'/'.$row['content_id'].'/';
@@ -797,7 +793,7 @@ class GalleryManagement
 				if (!rename($source_dir.'original/'.$row['filename'], $target_dir.'original/'.$row['filename']))
 					return false;
 		}
-		$modx->db->update(array('content_id' => $target), $modx->getFullTablename($this->galleriesTable), $where);
+		$this->modx->db->update(array('content_id' => $target), $this->modx->getFullTablename($this->galleriesTable), $where);
 		return true;
 	}
 
@@ -813,8 +809,8 @@ class GalleryManagement
 			return false;
 		if (!empty($where))
 			$where=' WHERE '.$where;
-		$ds = $modx->db->query('SELECT DISTINCT '.$field.' FROM '.$modx->getFullTablename($this->galleriesTable).$where);
-		while ($row = $modx->db->getRow($ds))
+		$ds = $this->modx->db->query('SELECT DISTINCT '.$field.' FROM '.$this->modx->getFullTablename($this->galleriesTable).$where);
+		while ($row = $this->modx->db->getRow($ds))
 		{
 			$result_ids[] = $row[$field];
 		}	
