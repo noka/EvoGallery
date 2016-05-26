@@ -30,20 +30,14 @@ $(document).ready(function(){
 
 						$.postAction = function(){
 							$.post("[+base_path+]action.php", 
-								{[+params+], 'action': params['action'], 'mode': 'id', 'action_ids': ids[i]},
+								{[+params+], 'action': params['action'], 'mode': 'id', 'action_ids': ids},
 								$.operation_callback
 							);
-						}	
+						}
 						$.operation_callback = function (data,status){
-							i++;
-							$.showProgress();
-							if (i<ids.length){
-									$.postAction();
-							} else {		
 								$("#operation-popup div.progress").hide();
 								$("#operation-popup div.status").text('[+lang.operation_complete+]');
 								$("#operation-popup div.close").show();
-							}	
 						}
 						$.postAction();
 					} else {
@@ -67,7 +61,6 @@ $(document).ready(function(){
 			}, //onLoad	
 			onClose: function() {
 				$("#operation-popup div.status").unbind('ajaxError');
-				window.location.reload();
 			}
 		});
 		overlay.load();
@@ -87,23 +80,19 @@ $(document).ready(function(){
         return false;
     });
 
-	$('#actions-menu').click(function() {
-		var sp = $('#actions-popup');
-		sp.css({
-			top: $(this).offset().top + $(this).outerHeight() + 'px',  
-			left: ($(this).offset().left + $(this).outerWidth() - sp.outerWidth()) + 'px'
-		});  
-		sp.toggle();
-		return false;
-	});
-	$('body, #actions-popup a').click(function() {
-		$('#actions-popup').hide();
-	});
-
 	if (!$('#subdocs').length)
 		$('#galcontrols').hide();
-	if (!$('#uploadContainer').length)
+	if (!$('#dropzone').length)
 		$('#doccontrols').hide();
 
 });
+
+$(window).bind('load', function() {
+	/*並び替え等のボタン表示*/
+	if ($("#uploadList li").length) {
+		$("#selectallcontrols").show();
+		$("#sortcontrols").show();
+	}
+});
+
 </script>

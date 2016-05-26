@@ -333,6 +333,8 @@ class GalleryManagement
 			}
 
 			// Get contents of upload script and replace necessary action URL
+            /* get modx config*/
+            $upload_maxsize = intval($this->modx->config['upload_maxsize'] / 1048576); //B to MB
             $allowImages=array();
             foreach( explode(',',$this->modx->config['upload_images']) as $item){
                 if(strpos(trim($item),'.')===false){
@@ -352,7 +354,7 @@ class GalleryManagement
 				'base_url' => $this->modx->config['base_url'],
 				'content_id' => $content_id,
 				'thumbs' => $this->config['urlPath'] . '/' . $content_id . '/thumbs/',
-				'upload_maxsize' => $this->modx->config['upload_maxsize'],
+				'upload_maxsize' => $upload_maxsize,
 				'upload_images' => $upload_images,
 			);
 
@@ -535,7 +537,7 @@ class GalleryManagement
 			case 'deleteall':
 				$mode = isset($_POST['mode'])?$_POST['mode']:'';
 				$ids = isset($_POST['action_ids'])?$this->modx->db->escape($_POST['action_ids']):'';
-				$ids = explode(',',$ids);
+				if(!is_array($ids)) $ids = explode(',',$ids);
 				foreach($ids as $key=>$value)
 					$ids[$key] = intval($value);
 				return $this->deleteImages($mode,$ids);
@@ -543,7 +545,7 @@ class GalleryManagement
 			case 'regenerateall':
 				$mode = isset($_POST['mode'])?$_POST['mode']:'';
 				$ids = isset($_POST['action_ids'])?$this->modx->db->escape($_POST['action_ids']):'';
-				$ids = explode(',',$ids);
+				if(!is_array($ids)) $ids = explode(',',$ids);
 				foreach($ids as $key=>$value)
 					$ids[$key] = intval($value);
 				return $this->regenerateImages($mode,$ids);
@@ -552,7 +554,7 @@ class GalleryManagement
 				$mode = isset($_POST['mode'])?$_POST['mode']:'';
 				$target = isset($_POST['target'])?intval($_POST['target']):0;
 				$ids = isset($_POST['action_ids'])?$this->modx->db->escape($_POST['action_ids']):'';
-				$ids = explode(',',$ids);
+	        		if(!is_array($ids)) $ids = explode(',',$ids);
 				foreach($ids as $key=>$value)
 					$ids[$key] = intval($value);
 				return $this->moveImages($mode,$ids,$target);
@@ -561,7 +563,7 @@ class GalleryManagement
 				$field = isset($_GET['field'])?$this->modx->db->escape($_GET['field']):'id';
 				$mode = isset($_GET['mode'])?$_GET['mode']:'';
 				$ids = isset($_GET['action_ids'])?$this->modx->db->escape($_GET['action_ids']):'';
-				$ids = explode(',',$ids);
+	        		if(!is_array($ids)) $ids = explode(',',$ids);
 				foreach($ids as $key=>$value)
 					$ids[$key] = intval($value);
 				return $this->getIDs($field, $mode, $ids);

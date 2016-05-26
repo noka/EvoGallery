@@ -9,20 +9,47 @@ $(function(){
           paramName: "Filedata",  // The name that will be used to transfer the file
           url:'[+base_path+]action.php',
           maxFilesize:  [+upload_maxsize+], // MB
+          parallelUploads: 20,
           /* accept rule*/
           acceptedFiles:"[+upload_images+]",
           /*notuse autoupload*/
           autoProcessQueue:false,
           addRemoveLinks:true,
+          /**/
+          dictDefaultMessage:"",
+          dictInvalidFileType:"[+lang.invalidfiletype+]",
+          dictFileTooBig:"[+lang.toobig+]",
+          dictRemoveFile:"[+lang.delete+]",
+          dictCancelUpload:"[+lang.cancel+]", 
         }
     );
-    imageDropzone.on("success",function(file){window.location.reload();});
-
-    $('#excute').click(function(){
-        imageDropzone.processQueue() ;
+    imageDropzone.on("success", function(file) {
+      imageDropzone.removeFile(file);
     });
 
+    $('.dropzone-actions-excute').click(function(){
+        imageDropzone.processQueue() ;
+        imageDropzone.on("queuecomplete",function(file){window.location.reload();});
+    });
+    
+    $('.dropzone-actions-cancel').click(function(){
+        imageDropzone.removeAllFiles(true);
+    });
 
+    /* ----TODO  .live は .onに置き換えること ---------------*/
+    $('#cmdCntDel').live("click", function(event){
+        var mode = $.getMode([+content_id+]);
+        if(mode['mode'] !='contentid'){
+            if(confirm('[+lang.delete_indoc_confirm+]')){
+							$.post("[+base_path+]action.php",{[+params+], 'action': 'deleteall', 'mode': 'id', 'action_ids':  mode['action_ids']},
+                                         function (data,status){
+                                             $("#uploadList li.selected").each(function(i,e){$(e).remove();
+                                          });
+						});
+            }
+        }
+        return false;
+    });
 
 
 	$.urlParam = function(name, link){
@@ -107,21 +134,6 @@ $(function(){
 			
 		}
 
-		$('#cmdCntDel').click(function(){
-			if(confirm('[+lang.delete_indoc_confirm+]')){
-				var mode = $.getMode([+content_id+]);
-				$.execAction(this, {'action': 'deleteall', 'mode': mode['mode'], 'action_ids': mode['action_ids']});
-			}
-			return false;
-		});
-		
-		$('#cmdCntRegenerate').click(function(){
-			if(confirm('[+lang.regenerate_indoc_confirm+]')){
-				var mode = $.getMode([+content_id+]);
-				$.execAction(this, {'action': 'regenerateall', 'mode': mode['mode'], 'action_ids': mode['action_ids']});
-			}
-			return false;
-		});
 
 		$('#cmdCntMoveTo').click(function(){
 			var overlay = $(this).overlay({
