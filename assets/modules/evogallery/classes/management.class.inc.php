@@ -619,15 +619,16 @@ class GalleryManagement
 			elseif ($this->modx->config['clean_uploaded_filename']) {
 				$target_fname = $this->modx->stripAlias($path_parts['filename']).'.'.$path_parts['extension'];
 			}
-			
+
+            //重複時は連番付加
+            $target_fname = $this->getFileName($target_dir,$target_fname,0);
+
 			$target_file = $target_dir . $target_fname;
 			$target_thumb = $target_dir . 'thumbs/' . $target_fname;
 			$target_original = $target_dir . 'original/' . $target_fname;
-            
 			
 			// Check for existence of document/gallery directories
 			$this->makeFolders($target_dir);
-
 
 			$movetofile = $keepOriginal?$target_original:$target_dir.uniqid();
 			// Copy uploaded image to final destination
@@ -681,7 +682,8 @@ class GalleryManagement
 				$fields = array(
 					'content_id' => $content_id,
 					'filename' => $this->modx->db->escape($target_fname),
-					'sortorder' => $pos
+					'sortorder' => $pos,
+                     'title'=> $this->modx->db->escape($target_fname),
 				);
 				$this->modx->db->insert($fields, $this->modx->getFullTableName('portfolio_galleries'));
 				$id = $this->modx->db->getInsertId();
@@ -835,6 +837,27 @@ class GalleryManagement
 		}
 		return $str;
 	}
+
+
+    function getFileName($d,$f,$i=0){
+        if($i>0){
+            //再帰
+            $info = pathinfo($d.$f);
+            $r = $info['filename'] . '-' . $i . '.' . $info['extension'];
+        } else {
+            //初回ループ
+            $f =str_replace("\s",'',ltrim($f,'.')); //空白NG
+            $r = $f;
+        }
+
+        if(file_exists($d.$r)){
+            $i++;
+            return $this->getFileName($d,$f,$i);
+        }
+
+        return $r;
+    }
+
 
 }
 ?>
