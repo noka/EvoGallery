@@ -23,6 +23,7 @@ $(function(){
           dictCancelUpload:"[+lang.cancel+]", 
         }
     );
+
     imageDropzone.on("success", function(file) {
       imageDropzone.removeFile(file);
     });
@@ -36,6 +37,8 @@ $(function(){
         imageDropzone.removeAllFiles(true);
     });
     
+    /*Original code based*/
+    /* ----TODO  .live は .onに置き換える or 別処理 jQuery version upに向けて---------------*/
     $('#cmdCntDel').click(function(){
         var mode = $.getMode([+content_id+]);
         if(mode['mode'] !='contentid'){
@@ -49,8 +52,6 @@ $(function(){
         }
         return false;
     });
-
-    /* ----TODO  .live は .onに置き換える or 別処理 ---------------*/
 
 
 	$.urlParam = function(name, link){
