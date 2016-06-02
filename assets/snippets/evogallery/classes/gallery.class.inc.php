@@ -89,7 +89,7 @@ class Gallery
 			$docSelect.= $excludeDocs;
 		}
 
-		$phx = new PHxParser();  // Instantiate PHx
+		$phx = new MODIFIERS();  // Instantiate PHx
 
 		$items = '';
 
