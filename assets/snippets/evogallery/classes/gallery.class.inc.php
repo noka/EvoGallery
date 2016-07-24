@@ -10,7 +10,7 @@ class Gallery
 	/**
 	* Class constructor, set configuration parameters
 	*/
-	function Gallery($params)
+	function __construct($params)
 	{
 		global $modx;
 
@@ -89,8 +89,8 @@ class Gallery
 			$docSelect.= $excludeDocs;
 		}
 
-		$phx = new MODIFIERS();  // Instantiate PHx
-
+		$placeholders = array();
+        $output = '';
 		$items = '';
 
 		// Retrieve list of documents under the requested id
@@ -114,7 +114,6 @@ class Gallery
 			$filter .= " AND ( id = (SELECT MIN(contentid) FROM ". $modx->getFullTableName('site_tmplvar_contentvalues') ." WHERE contentid = " . $modx->getFullTableName('site_content') .".id AND value LIKE '%" . $this->config['andFilter'] ."%') AND published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'" . ")";
 
 
-
 		if ($this->config['paginate']) {
 			//Retrieve total records
 			$totalRows = $modx->db->getValue('select count(*) from '.$modx->getFullTableName('site_content').$filter);
@@ -132,7 +131,7 @@ class Gallery
 		    $count = 1;
 			while ($row = $modx->fetchRow($result))
 			{
-				$item_phx = new PHxParser();
+				$item_placeholders = array();
 
 				// Get total number of images for total placeholder
 				$total_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'");
@@ -145,32 +144,33 @@ class Gallery
 					$image = $modx->fetchRow($image_result);
 					foreach ($image as $name => $value)
 						if ($name=='filename')
-							$item_phx->setPHxVariable($name, rawurlencode(trim($value)));
+							$item_placeholders[$name]=rawurlencode(trim($value));
 						else
-							$item_phx->setPHxVariable($name, trim($value));
-					$item_phx->setPHxVariable('images_dir', $this->config['galleriesUrl'] . $row['id'] . '/');
-					$item_phx->setPHxVariable('thumbs_dir', $this->config['galleriesUrl'] . $row['id'] . '/thumbs/');
-					$item_phx->setPHxVariable('original_dir', $this->config['galleriesUrl'] . $row['id'] . '/original/');
-					$item_phx->setPHxVariable('plugin_dir', $this->config['snippetUrl'] . $this->config['type'] . '/');
+							$item_placeholders[$name]=trim($value);
+                        
+					$item_placeholders['images_dir']=$this->config['galleriesUrl'] . $row['id'] . '/';
+					$item_placeholders['thumbs_dir']=$this->config['galleriesUrl'] . $row['id'] . '/thumbs/';
+					$item_placeholders['original_dir']=$this->config['galleriesUrl'] . $row['id'] . '/original/';
+					$item_placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
 
 					foreach ($row as $name => $value)
-						$item_phx->setPHxVariable($name, trim($value));
+						$item_placeholders[$name]=trim($value);
                     
                     // Get template variable output for row and set variables as needed
                     $row_tvs = $modx->getTemplateVarOutput('*',$row['id']);
 					foreach ($row_tvs as $name => $value)
-						$item_phx->setPHxVariable($name, trim($value));
+						$item_placeholders[$name]=trim($value);
 
-					$item_phx->setPHxVariable('total', $total);
+					$item_placeholders['total']=$total;
 
     				if(!empty($item_tpl_first) && $count == 1){
-        				$items .= $item_phx->Parse($item_tpl_first);
+        				$items .= $modx->parseText($item_tpl_first,$item_placeholders,'[+','+]',false);
     				} else if(!empty($item_tpl_last) && $count == $recordCount){
-        				$items .= $item_phx->Parse($item_tpl_last);
+        				$items .= $modx->parseText($item_tpl_last,$item_placeholders,'[+','+]',false);
     				} else if(!empty($item_tpl_alt) && $count % $this->config['itemAltNum'] == 0){
-        				$items .= $item_phx->Parse($item_tpl_alt);
+        				$items .= $modx->parseText($item_tpl_alt,$item_placeholders,'[+','+]',false);
     				} else {
-        				$items .= $item_phx->Parse($item_tpl);
+        				$items .= $modx->parseText($item_tpl,$item_placeholders,'[+','+]',false);
     				}
 
 				}
@@ -178,10 +178,11 @@ class Gallery
 			}
 		}
 
-		$phx->setPHxVariable('items', $items);
-		$phx->setPHxVariable('plugin_dir', $this->config['snippetUrl'] . $this->config['type'] . '/');
-
-		return $phx->Parse($tpl);  // Pass through PHx;
+		$placeholders['items']=$items;
+		$placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
+        
+        $output= $modx->parseText($tpl,$placeholders,'[+','+]',false);
+		return $output;
 	}
 
 	/**
@@ -234,8 +235,8 @@ class Gallery
             $docSelect .= "(".$tagSelect.")";
 		}
 
-		$phx = new PHxParser();  // Instantiate PHx
-
+		$placeholders = array();
+        $output = '';
 		$items = '';
 		$limit = '';
 		$where = !empty($docSelect)?' WHERE '.$docSelect.' ':'';
@@ -255,36 +256,38 @@ class Gallery
             $count = 1;		    
 			while ($row = $modx->fetchRow($result))
 			{
-				$item_phx = new PHxParser();
+				$item_placeholders = array();
 				foreach ($row as $name => $value)
 					if ($name=='filename')
-						$item_phx->setPHxVariable($name, rawurlencode(trim($value)));
+						$item_placeholders[$name] = rawurlencode(trim($value));
 					else
-						$item_phx->setPHxVariable($name, trim($value));
+						$item_placeholders[$name] = trim($value);
 				$imgsize = getimagesize($this->config['galleriesPath'] . $row['content_id'] . '/' . $row['filename']); 
-				$item_phx->setPHxVariable('width',$imgsize[0]); 
-				$item_phx->setPHxVariable('height',$imgsize[1]); 
-				$item_phx->setPHxVariable('image_withpath', $this->config['galleriesUrl'] . $row['content_id'] . '/' . $row['filename']);
-				$item_phx->setPHxVariable('images_dir', $this->config['galleriesUrl'] . $row['content_id'] . '/');
-				$item_phx->setPHxVariable('thumbs_dir', $this->config['galleriesUrl'] . $row['content_id'] . '/thumbs/');
-				$item_phx->setPHxVariable('original_dir', $this->config['galleriesUrl'] . $row['content_id'] . '/original/');
-				$item_phx->setPHxVariable('plugin_dir', $this->config['snippetUrl'] . $this->config['type'] . '/');
-				if(!empty($item_tpl_first) && $count == 1){
-    				$items .= $item_phx->Parse($item_tpl_first);
+				$item_placeholders['width'] = $imgsize[0]; 
+				$item_placeholders['height'] = $imgsize[1]; 
+				$item_placeholders['image_withpath'] = $this->config['galleriesUrl'] . $row['content_id'] . '/' . $row['filename'];
+				$item_placeholders['images_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/';
+				$item_placeholders['thumbs_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/thumbs/';
+				$item_placeholders['original_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/original/';
+				$item_placeholders['plugin_dir'] = $this->config['snippetUrl'] . $this->config['type'] . '/';
+
+                if(!empty($item_tpl_first) && $count == 1){
+        				$items .= $modx->parseText($item_tpl_first,$item_placeholders,'[+','+]',false);
 				} else if(!empty($item_tpl_last) && $count == $recordCount){
-    				$items .= $item_phx->Parse($item_tpl_last);
+        				$items .= $modx->parseText($item_tpl_last,$item_placeholders,'[+','+]',false);
 				} else if(!empty($item_tpl_alt) && $count % $this->config['itemAltNum'] == 0){
-    				$items .= $item_phx->Parse($item_tpl_alt);
+        				$items .= $modx->parseText($item_tpl_alt,$item_placeholders,'[+','+]',false);
 				} else {
-    				$items .= $item_phx->Parse($item_tpl);
+        				$items .= $modx->parseText($item_tpl,$item_placeholders,'[+','+]',false);
 				}
 				$count++;
 			}
 		}
-		$phx->setPHxVariable('items', $items);
-		$phx->setPHxVariable('plugin_dir', $this->config['snippetUrl'] . $this->config['type'] . '/');
-
-		return $phx->Parse($tpl);  // Pass through PHx;
+		$placeholders['items']=$items;
+		$placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
+        
+        $output= $modx->parseText($tpl,$placeholders,'[+','+]',false);
+		return $output;
 	}
 
 	/**
@@ -304,8 +307,8 @@ class Gallery
 				$picSelect = "id = '" . $this->config['picId'] . "'";
 		}
 
-		$phx = new PHxParser();  // Instantiate PHx
-
+		$placeholders = array();
+        $output = '';
 		$items = '';
 
 		// Retrieve photos from the database table
@@ -314,24 +317,25 @@ class Gallery
 		{
 			while ($row = $modx->fetchRow($result))
 			{
-				$item_phx = new PHxParser();
+				$item_placeholders = array();
 				foreach ($row as $name => $value)
 					if ($name=='filename')
-						$item_phx->setPHxVariable($name, rawurlencode(trim($value)));
+						$item_placeholders[$name]=rawurlencode(trim($value));
 					else
-						$item_phx->setPHxVariable($name, trim($value));
-				$item_phx->setPHxVariable('images_dir', $this->config['galleriesUrl'] . $row['content_id'] . '/');
-				$item_phx->setPHxVariable('thumbs_dir', $this->config['galleriesUrl'] . $row['content_id'] . '/thumbs/');
-				$item_phx->setPHxVariable('original_dir', $this->config['galleriesUrl'] . $row['content_id'] . '/original/');
-				$item_phx->setPHxVariable('plugin_dir', $this->config['snippetUrl'] . $this->config['type'] . '/');
-				$items .= $item_phx->Parse($item_tpl);
+						$item_placeholders[$name]=trim($value);
+				$item_placeholders['images_dir']=$this->config['galleriesUrl'] . $row['content_id'] . '/';
+				$item_placeholders['thumbs_dir']=$this->config['galleriesUrl'] . $row['content_id'] . '/thumbs/';
+				$item_placeholders['original_dir']=$this->config['galleriesUrl'] . $row['content_id'] . '/original/';
+				$item_placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
+                $items .= $modx->parseText($item_tpl,$item_placeholders,'[+','+]',false);
 			}
 		}
 
-		$phx->setPHxVariable('items', $items);
-		$phx->setPHxVariable('plugin_dir', $this->config['snippetUrl'] . $this->config['type'] . '/');
+		$placeholders['items']= $items;
+		$placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
 
-		return $phx->Parse($tpl);  // Pass through PHx;
+        $output= $modx->parseText($tpl,$placeholders,'[+','+]',false);
+		return $output;
 	}
 
 	/**
