@@ -14,7 +14,7 @@
 if (!isset($params['modulePath'])) $params['modulePath'] = $modx->config['base_path'].'assets/modules/evogallery/';
 include_once($params['modulePath'] . "classes/management.class.inc.php");
 if (class_exists('GalleryManagement'))
-	$manager = new GalleryManagement($params);
+	$manager = new GalleryManagement($params,$modx);
 else
 	$modx->logEvent(1, 3, 'Error loading Portfolio Galleries management module');
 $e =& $modx->event;
