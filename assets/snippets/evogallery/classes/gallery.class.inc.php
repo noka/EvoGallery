@@ -462,7 +462,9 @@ class Gallery
 																'PaginateNextText'=>$this->config['paginateNextText']));			
 
 		$pages = '';
-		for ($i=1;$i<=$totalPages;$i++) {
+                $show_start = ( $page-4 > 0 ) ? $page-4 : 1;
+                $show_end  = ( $show_start+9 < $totalPages ) ?  $show_start+9 : $totalPages;
+		for ($i=$show_start;$i<=$show_end;$i++) {
 			if ($i != $page) {
 				$pages .= $this->processTemplate($this->config['tplPaginatePage'],
 												array('url'=>$modx->makeUrl($modx->documentIdentifier,'',($i!=1?"$pageUrl=$i":"").($QS!=""?"&".$QS:"")),'page'=>$i));//$QS追加
