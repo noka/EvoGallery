@@ -679,11 +679,12 @@ class GalleryManagement
 					$pos = 1; 
 
 				// Create record in the database
+				preg_match('/(.*)(?:\.([^.]+$))/',$this->modx->db->escape($target_fname),$tmp_title);
 				$fields = array(
 					'content_id' => $content_id,
 					'filename' => $this->modx->db->escape($target_fname),
 					'sortorder' => $pos,
-                     'title'=> $this->modx->db->escape($target_fname),
+					'title' => $tmp_title[1],
 				);
 				$this->modx->db->insert($fields, $this->modx->getFullTableName('portfolio_galleries'));
 				$id = $this->modx->db->getInsertId();
