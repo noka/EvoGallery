@@ -27,7 +27,7 @@ if (!@ $conn = mysql_connect($database_server, $database_user, $database_passwor
     echo "<span class=\"ok\">".$_lang['ok']."</span></p>";
 }
 // make sure we can use the database
-if (!@ mysql_query("USE {$dbase}")) {
+if (!@ mysql_query("USE `{$dbase}`")) {
     $errors += 1;
     echo "<span class=\"notok\">".$_lang['database_use_failed']."</span><p />".$_lang["database_use_failed_note"]."</p>";
 }
