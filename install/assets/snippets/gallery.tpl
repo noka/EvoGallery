@@ -142,8 +142,8 @@ $params['tplPaginateCurrentPage'] = isset($tplPaginateCurrentPage)?$modx->getChu
 
 include_once($params['snippetPath'] . 'classes/gallery.class.inc.php');
 
-if (!class_exists('PHxParser'))
-	include_once($params['snippetPath'] . 'classes/phx.parser.class.inc.php');
+//if (!class_exists('PHxParser'))
+//	include_once($params['snippetPath'] . 'classes/phx.parser.class.inc.php');
 //$modx->loadExtension('phx');
 
 if (class_exists('Gallery'))
