@@ -101,6 +101,8 @@ p.thumbPreview {
     text-align: center;
 }
 p.thumbPreview img {
+   width:100%; 
+   overflow:hidden;
 }
 #overlay form {
     margin-left: 220px;
