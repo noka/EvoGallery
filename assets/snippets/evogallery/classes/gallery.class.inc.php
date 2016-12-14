@@ -134,8 +134,8 @@ class Gallery
 				$item_placeholders = array();
 
 				// Get total number of images for total placeholder
-				$total_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'");
-                $total = $modx->db->getRecordCount($total_result);
+        $total_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'");
+        $total = $modx->db->getRecordCount($total_result);
 
 				// Fetch first image for each gallery, using the image sort order/direction
 				$image_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'", $this->config['sortBy'] . ' ' . $this->config['sortDir'], '1');
@@ -180,8 +180,9 @@ class Gallery
 
 		$placeholders['items']=$items;
 		$placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
+	  $placeholders['total']=$recordCount;
         
-        $output= $modx->parseText($tpl,$placeholders,'[+','+]',false);
+     $output= $modx->parseText($tpl,$placeholders,'[+','+]',false);
 		return $output;
 	}
 
@@ -285,8 +286,9 @@ class Gallery
 		}
 		$placeholders['items']=$items;
 		$placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
+	  $placeholders['total']=$recordCount;
         
-        $output= $modx->parseText($tpl,$placeholders,'[+','+]',false);
+    $output= $modx->parseText($tpl,$placeholders,'[+','+]');
 		return $output;
 	}
 
