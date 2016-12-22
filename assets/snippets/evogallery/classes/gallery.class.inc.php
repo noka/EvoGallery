@@ -3,43 +3,43 @@
 * Gallery - Contains functions for generating a listing of gallery thumbanils
 *                   while controlling various display aspects.
 *--------------------------------------------------------------------------*/
-class Gallery
-{
-	var $config;  // Array containing snippet configuration values
+class Gallery{
 
-	/**
-	* Class constructor, set configuration parameters
-	*/
-	function __construct($params)
-	{
-		global $modx;
+  var $config;  // Array containing snippet configuration values
 
-		$this->config = $params;
 
-		$this->galleriesTable = 'portfolio_galleries';
-	}
+	function __construct($params){
+    global $modx;
+    $this->config = $params;
+    $this->galleriesTable = 'portfolio_galleries';
+  }
+
 
 	/**
 	* Determine what action was requested and process request
 	*/
-	function execute()
-	{
-		$output = '';
+	function execute(){
+    $output = '';
+    $this->config['type'] = isset($this->config['type']) ? $this->config['type'] : 'simple-list';
 
-		$this->config['type'] = isset($this->config['type']) ? $this->config['type'] : 'simple-list';
+		if ($this->config['includeAssets']) $this->getConfig($this->config['type']);
 
-		if ($this->config['includeAssets'])
-			$this->getConfig($this->config['type']);
+    switch($this->config['display']){
+      case 'galleries':
+        $output = $this->renderGalleries();
+        break;
 
-		if ($this->config['display'] == 'galleries')
-			$output = $this->renderGalleries();
-		elseif ($this->config['display'] == 'single')
-			$output = $this->renderSingle();
-        else
-			$output = $this->renderImages();
+      case 'single':
+        $output = $this->renderSingle();
+        break;
+      
+      default:
+        $output = $this->renderImages();
+        break;
+    }
 
-		return $output;
-	}
+    return $output;
+  }
 
 	/**
 	* Generate a listing of document galleries
@@ -66,44 +66,54 @@ class Gallery
 
 		// Hide/show docs based on configuration
 		$docSelect = '';
-		if ($this->config['docId'] != '*' && !empty($this->config['docId']))
-		{
-			if (strpos($this->config['docId'], ',') !== false)
-			{
+		if ($this->config['docId'] != '*' && !empty($this->config['docId'])){
+      //指定id配下すべてを探索対象とする。**TODO depthパラメータ導入を検討
+      $docids = explode(',',$this->config['docId']);
+      $parents = $docids;
+      foreach($docids as $docid){
+          $children = $modx->getChildIds($docid);
+          $parents = array_merge($parents,$children);
+       }
+       $parents = array_unique($parents);
+       $this->config['docId']= implode(',',$parents);
+       //---------------------
+
+			if (strpos($this->config['docId'], ',') !== false){
 				$docSelect = 'parent IN ('.$this->config['docId'].')';
-			}
-			else
+			}else{
 				$docSelect = 'parent = ' . $this->config['docId'];
+      }
+      
 		}
-		if ($this->config['excludeDocs'] > 0)
-		{
+    
+		if ($this->config['excludeDocs'] > 0){
 			$excludeDocs = '';
-			if (strpos($this->config['excludeDocs'], ',') !== false)
-			{
+	
+  		if (strpos($this->config['excludeDocs'], ',') !== false){
 				$excludeDocs = 'parent NOT IN ('.$this->config['excludeDocs'].')';
-			}
-			else
+			}else{
 				$excludeDocs .= 'parent != ' . $this->config['excludeDocs'];
-			if (!empty($docSelect))
+      }
+
+			if (!empty($docSelect)){
 				$docSelect.= ' AND ';
+      }
+
 			$docSelect.= $excludeDocs;
 		}
 
 		$placeholders = array();
-        $output = '';
+    $output = '';
 		$items = '';
 
 		// Retrieve list of documents under the requested id
-		$filter = " WHERE deleted = '0' AND published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'";
+		$filter = " WHERE published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'";
 		//------------------------------where句にギャラリーテーブルチェックをデフォルトで追加。
 		$filter .= " AND id = (SELECT MIN(content_id) FROM ". $modx->getFullTableName($this->galleriesTable) ." WHERE content_id = " . $modx->getFullTableName('site_content') .".id )";
 		//-------------------------------
-
-		
-
-		
+			
 		if (!empty($docSelect))
-			$filter.=' AND '.$docSelect;
+			$filter .= ' AND '. $docSelect;
 
 		//フィルターで与えられたワードがテンプレート変数内に存在するかチェックする。とりあえず全テンプレート変数内に該当キーワードが含まれるかチェック*******TODO*********もっとエレガントにできるはず。
 		if ($this->config['filter'])
@@ -116,6 +126,8 @@ class Gallery
 
 		if ($this->config['paginate']) {
 			//Retrieve total records
+	    // 'SELCET count(sc.id) FROM ' . $modx->getFullTableName('site_content') . ' sc LEFT JOIN ' . $modx->getFullTableName($this->galleriesTable) . ' ga ON sc.id=ga.content_id '
+		 //$totalRows = $modx->db->getValue('SELCET count(sc.id) FROM ' . $modx->getFullTableName('site_content') . ' sc RIGHT JOIN ' . $modx->getFullTableName($this->galleriesTable) . ' ga ON sc.id=ga.content_id ' . $filter);
 			$totalRows = $modx->db->getValue('select count(*) from '.$modx->getFullTableName('site_content').$filter);
 			if (!empty($this->config['limit']) && $totalRows>$this->config['limit'])
 				$totalRows = $this->config['limit'];
@@ -125,7 +137,8 @@ class Gallery
 		} else
 			$limit = !empty($this->config['limit']) ? ' limit '.$this->config['limit'] : "";
 		$result = $modx->db->query("select id, pagetitle, longtitle, description, alias, pub_date, introtext, editedby, editedon, publishedon, publishedby, menutitle from " . $modx->getFullTableName('site_content') . $filter. ' order by '. $this->config['gallerySortBy'] . ' ' . $this->config['gallerySortDir'] . $limit);
-		$recordCount = $modx->db->getRecordCount($result);
+
+    $recordCount = $modx->db->getRecordCount($result);
 		if ($recordCount > 0)
 		{
 		    $count = 1;
@@ -134,8 +147,8 @@ class Gallery
 				$item_placeholders = array();
 
 				// Get total number of images for total placeholder
-        $total_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'");
-        $total = $modx->db->getRecordCount($total_result);
+				$total_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'");
+                $total = $modx->db->getRecordCount($total_result);
 
 				// Fetch first image for each gallery, using the image sort order/direction
 				$image_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'", $this->config['sortBy'] . ' ' . $this->config['sortDir'], '1');
@@ -144,7 +157,7 @@ class Gallery
 					$image = $modx->fetchRow($image_result);
 					foreach ($image as $name => $value)
 						if ($name=='filename')
-							$item_placeholders[$name]=rawurlencode(trim($value));
+							$item_placeholders[$name]=rawurlencode($value);
 						else
 							$item_placeholders[$name]=trim($value);
                         
@@ -164,13 +177,13 @@ class Gallery
 					$item_placeholders['total']=$total;
 
     				if(!empty($item_tpl_first) && $count == 1){
-        				$items .= $modx->parseText($item_tpl_first,$item_placeholders,'[+','+]',false);
+        				$items .= $modx->parseText($item_tpl_first,$item_placeholders);
     				} else if(!empty($item_tpl_last) && $count == $recordCount){
-        				$items .= $modx->parseText($item_tpl_last,$item_placeholders,'[+','+]',false);
+        				$items .= $modx->parseText($item_tpl_last,$item_placeholders);
     				} else if(!empty($item_tpl_alt) && $count % $this->config['itemAltNum'] == 0){
-        				$items .= $modx->parseText($item_tpl_alt,$item_placeholders,'[+','+]',false);
+        				$items .= $modx->parseText($item_tpl_alt,$item_placeholders);
     				} else {
-        				$items .= $modx->parseText($item_tpl,$item_placeholders,'[+','+]',false);
+        				$items .= $modx->parseText($item_tpl,$item_placeholders);
     				}
 
 				}
@@ -178,11 +191,12 @@ class Gallery
 			}
 		}
 
-		$placeholders['items']=$items;
-		$placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
-	  $placeholders['total']=$recordCount;
-        
-     $output= $modx->parseText($tpl,$placeholders,'[+','+]',false);
+    $placeholders['items']=$items;
+    $placeholders['total']=$recordCount;
+    $placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
+
+    $output= $modx->parseText($tpl,$placeholders);
+
 		return $output;
 	}
 
@@ -254,41 +268,49 @@ class Gallery
         $recordCount = $modx->db->getRecordCount($result);
 		if ($recordCount > 0)
 		{
-            $count = 1;		    
-			while ($row = $modx->fetchRow($result))
-			{
-				$item_placeholders = array();
-				foreach ($row as $name => $value)
-					if ($name=='filename')
-						$item_placeholders[$name] = rawurlencode(trim($value));
-					else
-						$item_placeholders[$name] = trim($value);
-				$imgsize = getimagesize($this->config['galleriesPath'] . $row['content_id'] . '/' . $row['filename']); 
-				$item_placeholders['width'] = $imgsize[0]; 
-				$item_placeholders['height'] = $imgsize[1]; 
-				$item_placeholders['image_withpath'] = $this->config['galleriesUrl'] . $row['content_id'] . '/' . $row['filename'];
-				$item_placeholders['images_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/';
-				$item_placeholders['thumbs_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/thumbs/';
-				$item_placeholders['original_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/original/';
-				$item_placeholders['plugin_dir'] = $this->config['snippetUrl'] . $this->config['type'] . '/';
+      $count = 1;
+      while ($row = $modx->fetchRow($result)){
+        $imgsize=array();
+        $item_placeholders = array();
 
-                if(!empty($item_tpl_first) && $count == 1){
-        				$items .= $modx->parseText($item_tpl_first,$item_placeholders,'[+','+]',false);
-				} else if(!empty($item_tpl_last) && $count == $recordCount){
-        				$items .= $modx->parseText($item_tpl_last,$item_placeholders,'[+','+]',false);
-				} else if(!empty($item_tpl_alt) && $count % $this->config['itemAltNum'] == 0){
-        				$items .= $modx->parseText($item_tpl_alt,$item_placeholders,'[+','+]',false);
-				} else {
-        				$items .= $modx->parseText($item_tpl,$item_placeholders,'[+','+]',false);
-				}
-				$count++;
+        foreach ($row as $name => $value) {
+          if ($name=='filename'){
+            $item_placeholders[$name]  = rawurlencode($value);
+          }else{
+						$item_placeholders[$name] = trim($value);
+          }
+        }
+        
+        if(file_exists($this->config['galleriesPath'] . $row['content_id'] . '/' . $row['filename'])){
+          $imgsize = getimagesize($this->config['galleriesPath'] . $row['content_id'] . '/' . $row['filename']); 
+        }
+        $item_placeholders['width'] = $imgsize[0]; 
+        $item_placeholders['height'] = $imgsize[1]; 
+        $item_placeholders['image_withpath'] = $this->config['galleriesUrl'] . $row['content_id'] . '/' . $row['filename'];
+        $item_placeholders['images_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/';
+        $item_placeholders['thumbs_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/thumbs/';
+        $item_placeholders['original_dir'] = $this->config['galleriesUrl'] . $row['content_id'] . '/original/';
+        $item_placeholders['plugin_dir'] = $this->config['snippetUrl'] . $this->config['type'] . '/';
+
+        if(!empty($item_tpl_first) && $count == 1){
+          $items .= $modx->parseText($item_tpl_first,$item_placeholders);
+        } elseif(!empty($item_tpl_last) && $count == $recordCount){
+          $items .= $modx->parseText($item_tpl_last,$item_placeholders);
+        } elseif(!empty($item_tpl_alt) && $count % $this->config['itemAltNum'] == 0){
+          $items .= $modx->parseText($item_tpl_alt,$item_placeholders);
+        } else {
+          $items .= $modx->parseText($item_tpl,$item_placeholders);
+        }
+
+        $count++;
 			}
 		}
-		$placeholders['items']=$items;
-		$placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
-	  $placeholders['total']=$recordCount;
+
+    $placeholders['items']=$items;
+    $placeholders['total']=$recordCount;
+    $placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
         
-    $output= $modx->parseText($tpl,$placeholders,'[+','+]');
+    $output= $modx->parseText($tpl,$placeholders);
 		return $output;
 	}
 
@@ -329,14 +351,14 @@ class Gallery
 				$item_placeholders['thumbs_dir']=$this->config['galleriesUrl'] . $row['content_id'] . '/thumbs/';
 				$item_placeholders['original_dir']=$this->config['galleriesUrl'] . $row['content_id'] . '/original/';
 				$item_placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
-                $items .= $modx->parseText($item_tpl,$item_placeholders,'[+','+]',false);
+                $items .= $modx->parseText($item_tpl,$item_placeholders);
 			}
 		}
 
 		$placeholders['items']= $items;
 		$placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
 
-        $output= $modx->parseText($tpl,$placeholders,'[+','+]',false);
+    $output= $modx->parseText($tpl,$placeholders);
 		return $output;
 	}
 
