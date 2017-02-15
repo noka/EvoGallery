@@ -44,14 +44,15 @@ class Gallery{
 	/**
 	* Generate a listing of document galleries
 	* ギャラリーモードのカスタマイズ
-	* １）limitパラメータがsite_contet対象のため、写真が含まれない投稿もカウントされて正確なリストアップがされない
-		 => サブクエリでギャラリーテーブルにcontent_idがあることを条件に追加
-		 
-	* ２）docIdパラメータが複数時にうまく機能しない
-		 => 配列に変換する必要が無いのにしているので修正
+	* １）limitパラメータがsite_contet対象のため、写真が含まれない投稿もカウントされて正確なリストアップがされないので修正
+	 
+	* ２）docIdパラメータが複数時にうまく機能しないので修正
 	
 	* ３）テンプレート変数によるフィルタをかけたい
 		=> 時間が無いので、とりあえず全テンプレート変数を対象にキーワードマッチするオプションを追加
+   
+   *４）指定id配下のリソースも探索する。&depthで深さを指定。
+    
 	*/
 	function renderGalleries()
 	{
@@ -67,32 +68,49 @@ class Gallery{
 		// Hide/show docs based on configuration
 		$docSelect = '';
 		if ($this->config['docId'] != '*' && !empty($this->config['docId'])){
-      //指定id配下すべてを探索対象とする。**TODO depthパラメータ導入を検討
+
+      //-----------------------docId 指定id配下すべてを探索対象とする。
+      //set depth
+      if(isset($this->config['depth']) && $this->config['depth']>0){
+        $depth = (int)$this->config['depth'];
+      }else{
+        $depth=5;
+      }
+
       $docids = explode(',',$this->config['docId']);
       $parents = $docids;
-      foreach($docids as $docid){
-          $children = $modx->getChildIds($docid);
-          $parents = array_merge($parents,$children);
-       }
-       $parents = array_unique($parents);
-       $this->config['docId']= implode(',',$parents);
-       //---------------------
 
-			if (strpos($this->config['docId'], ',') !== false){
-				$docSelect = 'parent IN ('.$this->config['docId'].')';
-			}else{
-				$docSelect = 'parent = ' . $this->config['docId'];
+      foreach($docids as $docid){
+        $parents = array_merge($parents, $modx->getChildIds($docid, $depth));
       }
+      $parents = array_unique($parents);
+
+      $parents_hasChildren=array();
+      foreach($parents as $docid){
+        $children = $modx->getChildIds($docid, 1);
+        if(count($children)>0){$parents_hasChildren[]=$docid;}
+      }
+
+      $parents = implode(',',$parents_hasChildren);
+
+			if (strpos($parents, ',') !== false){
+				$docSelect = 'sc.parent IN (' . $parents . ')';
+			}else{
+				$docSelect = 'sc.parent = ' . $parents;
+      }
+      //-----------------------------
       
 		}
+
     
-		if ($this->config['excludeDocs'] > 0){
+    //-----------------------------excludeDocs
+		if (isset($this->config['excludeDocs']) && !empty($this->config['excludeDocs'])){
 			$excludeDocs = '';
 	
   		if (strpos($this->config['excludeDocs'], ',') !== false){
 				$excludeDocs = 'parent NOT IN ('.$this->config['excludeDocs'].')';
 			}else{
-				$excludeDocs .= 'parent != ' . $this->config['excludeDocs'];
+				$excludeDocs = 'parent != ' . (int)$this->config['excludeDocs'];
       }
 
 			if (!empty($docSelect)){
@@ -107,74 +125,80 @@ class Gallery{
 		$items = '';
 
 		// Retrieve list of documents under the requested id
-		$filter = " WHERE published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'";
-		//------------------------------where句にギャラリーテーブルチェックをデフォルトで追加。
-		$filter .= " AND id = (SELECT MIN(content_id) FROM ". $modx->getFullTableName($this->galleriesTable) ." WHERE content_id = " . $modx->getFullTableName('site_content') .".id )";
-		//-------------------------------
-			
+	  $sql_getGallery_base = "SELECT DISTINCT sc.id, sc.pagetitle, sc.longtitle, sc.description, sc.alias, sc.pub_date, sc.introtext, sc.editedby, sc.editedon, sc.publishedon, sc.publishedby, sc.menutitle FROM "
+                                    . $modx->getFullTableName('site_content') . "sc, " . $modx->getFullTableName($this->galleriesTable) . " ga ";
+	
+		$filter = " WHERE (sc.id = ga.content_id AND sc.published = '1' AND sc.type = 'document' AND sc.hidemenu <= '" . $this->config['ignoreHidden'] . "')";
+	
 		if (!empty($docSelect))
 			$filter .= ' AND '. $docSelect;
 
-		//フィルターで与えられたワードがテンプレート変数内に存在するかチェックする。とりあえず全テンプレート変数内に該当キーワードが含まれるかチェック*******TODO*********もっとエレガントにできるはず。
-		if ($this->config['filter'])
-			$filter .= " OR ( id = (SELECT MIN(contentid) FROM ". $modx->getFullTableName('site_tmplvar_contentvalues') ." WHERE contentid = " . $modx->getFullTableName('site_content') .".id AND value LIKE '%" . $this->config['filter'] ."%') AND published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'" . ")";
+		//フィルター
+    //与えられたワードがテンプレート変数内に存在するかチェックする。とりあえず全テンプレート変数内に該当キーワードが含まれるか
 
-		//ANDフィルターで与えられたワードがテンプレート変数内に存在するかチェックする。とりあえず全テンプレート変数内に該当キーワードが含まれるかチェック*******TODO*********もっとエレガントにできるはず。
-		if ($this->config['andFilter'])
-			$filter .= " AND ( id = (SELECT MIN(contentid) FROM ". $modx->getFullTableName('site_tmplvar_contentvalues') ." WHERE contentid = " . $modx->getFullTableName('site_content') .".id AND value LIKE '%" . $this->config['andFilter'] ."%') AND published = '1' AND type = 'document' AND hidemenu <= '" . $this->config['ignoreHidden'] . "'" . ")";
-
+    // or 
+		if ($this->config['filter']){
+			$filter .= " OR ( sc.id = (SELECT MIN(contentid) FROM ". $modx->getFullTableName('site_tmplvar_contentvalues') ." WHERE contentid = sc.id AND value LIKE '%" . $this->config['filter'] ."%') AND "."(sc.id = ga.content_id AND sc.published = '1' AND sc.type = 'document' AND sc.hidemenu <= '" . $this->config['ignoreHidden'] . "')".")";
+    }
+		//and
+		if ($this->config['andFilter']){
+			$filter .= " AND ( sc.id = (SELECT MIN(contentid) FROM ". $modx->getFullTableName('site_tmplvar_contentvalues') ." WHERE contentid = sc.id AND value LIKE '%" . $this->config['andFilter'] ."%') )";
+    }
 
 		if ($this->config['paginate']) {
-			//Retrieve total records
-	    // 'SELCET count(sc.id) FROM ' . $modx->getFullTableName('site_content') . ' sc LEFT JOIN ' . $modx->getFullTableName($this->galleriesTable) . ' ga ON sc.id=ga.content_id '
-		 //$totalRows = $modx->db->getValue('SELCET count(sc.id) FROM ' . $modx->getFullTableName('site_content') . ' sc RIGHT JOIN ' . $modx->getFullTableName($this->galleriesTable) . ' ga ON sc.id=ga.content_id ' . $filter);
-			$totalRows = $modx->db->getValue('select count(*) from '.$modx->getFullTableName('site_content').$filter);
-			if (!empty($this->config['limit']) && $totalRows>$this->config['limit'])
-				$totalRows = $this->config['limit'];
-			$limit = $this->paginate($totalRows);
-			if (!empty($limit))
-				$limit = ' limit '.$limit;
-		} else
-			$limit = !empty($this->config['limit']) ? ' limit '.$this->config['limit'] : "";
-		$result = $modx->db->query("select id, pagetitle, longtitle, description, alias, pub_date, introtext, editedby, editedon, publishedon, publishedby, menutitle from " . $modx->getFullTableName('site_content') . $filter. ' order by '. $this->config['gallerySortBy'] . ' ' . $this->config['gallerySortDir'] . $limit);
 
+			//Retrieve total records
+			$totalRows = $modx->db->getValue('SELECT count(DISTINCT sc.id) FROM '.$modx->getFullTableName('site_content') . "sc, " . $modx->getFullTableName($this->galleriesTable) . " ga ". $filter);
+			if (!empty($this->config['limit']) && $totalRows > $this->config['limit']){
+				$totalRows = $this->config['limit'];
+      }
+  		$limit = $this->paginate($totalRows);
+
+		} else {
+			$limit = !empty($this->config['limit']) ? ' limit ' . $this->config['limit'] : "";
+    }
+    //検索実行
+		$result = $modx->db->query( $sql_getGallery_base . $filter . ' order by '. $this->config['gallerySortBy'] . ' ' . $this->config['gallerySortDir'] . $limit);
+
+    //アルバム数
     $recordCount = $modx->db->getRecordCount($result);
-		if ($recordCount > 0)
-		{
-		    $count = 1;
-			while ($row = $modx->fetchRow($result))
-			{
+
+		if ($recordCount > 0){
+      
+      $count = 1;
+
+      //action each Album 
+      while ($row = $modx->fetchRow($result)){
 				$item_placeholders = array();
 
 				// Get total number of images for total placeholder
-				$total_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'");
-                $total = $modx->db->getRecordCount($total_result);
+        $total_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'");
+
+        //アルバム内写真数
+        $total = $modx->db->getRecordCount($total_result);
 
 				// Fetch first image for each gallery, using the image sort order/direction
 				$image_result = $modx->db->select("filename", $modx->getFullTableName($this->galleriesTable), "content_id = '" . $row['id'] . "'", $this->config['sortBy'] . ' ' . $this->config['sortDir'], '1');
-				if ($modx->db->getRecordCount($image_result) > 0)
-				{
+
+				if ($modx->db->getRecordCount($image_result) > 0){
+
 					$image = $modx->fetchRow($image_result);
-					foreach ($image as $name => $value)
-						if ($name=='filename')
-							$item_placeholders[$name]=rawurlencode($value);
-						else
-							$item_placeholders[$name]=trim($value);
-                        
-					$item_placeholders['images_dir']=$this->config['galleriesUrl'] . $row['id'] . '/';
-					$item_placeholders['thumbs_dir']=$this->config['galleriesUrl'] . $row['id'] . '/thumbs/';
-					$item_placeholders['original_dir']=$this->config['galleriesUrl'] . $row['id'] . '/original/';
-					$item_placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
 
-					foreach ($row as $name => $value)
-						$item_placeholders[$name]=trim($value);
-                    
-                    // Get template variable output for row and set variables as needed
-                    $row_tvs = $modx->getTemplateVarOutput('*',$row['id']);
-					foreach ($row_tvs as $name => $value)
-						$item_placeholders[$name]=trim($value);
+          // Get template variable output for row and set variables as needed
+          $row_tvs = $modx->getTemplateVarOutput('*',$row['id']);
 
-					$item_placeholders['total']=$total;
+          $item_placeholders = array(
+            'filename' => rawurlencode($image['filename']),
+            'images_dir' => $this->config['galleriesUrl'] . $row['id'] . '/',
+            'thumbs_dir' => $this->config['galleriesUrl'] . $row['id'] . '/thumbs/',
+            'original_dir' => $this->config['galleriesUrl'] . $row['id'] . '/original/',
+            'plugin_dir' => $this->config['snippetUrl'] . $this->config['type'] . '/',
+            'total' => $total,
+          );
+
+           // resource data
+					foreach ($row as $name => $value){ $item_placeholders[$name]=trim($value); }
+					foreach ($row_tvs as $name => $value){ $item_placeholders[$name]=trim($value); }
 
     				if(!empty($item_tpl_first) && $count == 1){
         				$items .= $modx->parseText($item_tpl_first,$item_placeholders);
@@ -189,6 +213,8 @@ class Gallery{
 				}
 				$count++;
 			}
+      //----
+      
 		}
 
     $placeholders['items']=$items;
@@ -224,6 +250,7 @@ class Gallery{
 			else
 				$docSelect = 'content_id = ' . $this->config['docId'];
 		}
+    
 		if ($this->config['excludeDocs'] > 0)
 		{
 			$excludeDocs = '';
@@ -233,6 +260,7 @@ class Gallery{
 			}
 			else
 				$excludeDocs .= 'content_id != ' . $this->config['excludeDocs'];
+
 			if (!empty($docSelect))
 				$docSelect.= ' AND ';
 			$docSelect.= $excludeDocs;
@@ -259,10 +287,9 @@ class Gallery{
 			//Retrieve total records
 			$totalRows = $modx->db->getValue('select count(*) from '.$modx->getFullTableName($this->galleriesTable).$where.(!empty($this->config['limit']) ? ' limit '.$this->config['limit'] : ""));
 			$limit = $this->paginate($totalRows);
-			if (!empty($limit))
-				$limit = ' limit '.$limit;
-		} else
+		} else{
 			$limit = !empty($this->config['limit']) ? ' limit '.$this->config['limit'] : "";
+    }
 		// Retrieve photos from the database table
 		$result = $modx->db->query("select * from ". $modx->getFullTableName($this->galleriesTable). $where. ' order by '. $this->config['sortBy'] . ' ' . $this->config['sortDir']. $limit);
         $recordCount = $modx->db->getRecordCount($result);
@@ -309,8 +336,10 @@ class Gallery{
     $placeholders['items']=$items;
     $placeholders['total']=$recordCount;
     $placeholders['plugin_dir']=$this->config['snippetUrl'] . $this->config['type'] . '/';
-        
-    $output= $modx->parseText($tpl,$placeholders);
+
+    if(!empty($items)){        
+      $output= $modx->parseText($tpl,$placeholders);
+    }
 		return $output;
 	}
 
@@ -436,6 +465,10 @@ class Gallery{
 		$pageUrl = !empty($this->config['id'])?$this->config['id'].'_page':'page';
 		$page = isset($_GET[$pageUrl])?intval($_GET[$pageUrl]):1;
 
+		$rowsPerPage = $this->config['show'];
+		$totalPages = ceil($totalRows/$rowsPerPage);
+    if($page > $totalPages){$page = $totalPages;}
+
 		//クエリストリングに$pageUrl以外が含まれている場合、そのクエリは残してページリンクを生成できるように$QSに保存する。
 		$arrQS = array();
 		$QS ="";
@@ -447,10 +480,8 @@ class Gallery{
 			}
 			unset($arrQS);
 		}
-		//ここまで
+		//---------------------
 
-		$rowsPerPage = $this->config['show'];
-		$totalPages = ceil($totalRows/$rowsPerPage);
 		$previous = $page - 1;
 		$next = $page + 1;
 		$start = ($page-1)*$rowsPerPage;
@@ -506,7 +537,7 @@ class Gallery{
 		$modx->setPlaceholder($this->config['id']."pages", $pages);
 		$modx->setPlaceholder($this->config['id']."perPage", $rowsPerPage);
 		$modx->setPlaceholder($this->config['id']."totalPages", $totalPages);
-		return $start.','.($stop-$start+1);
+		return ' LIMIT ' . $start.','.($stop-$start+1);
 	}	
 
 }
