@@ -28,8 +28,8 @@ class GalleryManagement
 	*/
 	function __construct($params,&$modx)
 	{
-        	$this->modx = $modx;
-		$this->config = $params;
+    $this->modx = $modx;
+    $this->config = $params;
 		$this->config['urlPath'] = $this->modx->config['base_url'].rtrim($this->config['savePath'],'/');
 		$this->config['savePath'] = $this->modx->config['base_path'].rtrim($this->config['savePath'],'/');
 
@@ -476,8 +476,8 @@ class GalleryManagement
 			"`content_id` int(11) NOT NULL, " .
 			"`filename` varchar(255) NOT NULL, " .
 			"`title` varchar(255) NOT NULL, " .
-			"`description` TEXT NOT NULL, " .
-			"`keywords` TEXT NOT NULL, " .
+			"`description` TEXT, " .
+			"`keywords` TEXT, " .
 			"`sortorder` smallint(7) NOT NULL default '0'" .
                 ")";
                 $this->modx->db->query($sql);
@@ -669,8 +669,7 @@ class GalleryManagement
 				);
 				$this->modx->db->update($fields, $this->modx->getFullTableName('portfolio_galleries'), "id='".$id."'");
 				
-			} else
-			{
+      }else{
 				// Find the last order position
 				$rs = $this->modx->db->select('sortorder', $this->modx->getFullTableName('portfolio_galleries'), 'content_id="'.$content_id.'"', 'sortorder DESC', '1');
 				if ($this->modx->db->getRecordCount($rs) > 0)
@@ -678,17 +677,19 @@ class GalleryManagement
 				else
 					$pos = 1; 
 
-				// Create record in the database
-				preg_match('/(.*)(?:\.([^.]+$))/',$this->modx->db->escape($target_fname),$tmp_title);
-				$fields = array(
-					'content_id' => $content_id,
-					'filename' => $this->modx->db->escape($target_fname),
-					'sortorder' => $pos,
-					'title' => $tmp_title[1],
-				);
-				$this->modx->db->insert($fields, $this->modx->getFullTableName('portfolio_galleries'));
-				$id = $this->modx->db->getInsertId();
-			}
+        // Create record in the database
+        preg_match('/(.*)(?:\.([^.]+$))/',$this->modx->db->escape($target_fname),$tmp_title);
+        $fields = array(
+          'content_id' => $content_id,
+          'filename' => $this->modx->db->escape($target_fname),
+          'sortorder' => $pos,
+          'title' => $tmp_title[1],
+          'description'=>'',
+          'keywords'=>'',
+        );
+        $this->modx->db->insert($fields, $this->modx->getFullTableName('portfolio_galleries'));
+        $id = $this->modx->db->getInsertId();
+      }
 			
 			//return new filename
 			return json_encode(array('result'=>'ok','filename'=>$target_fname,'id'=>$id));
