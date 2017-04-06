@@ -591,11 +591,11 @@ class GalleryManagement
 		$keepOriginal = $this->config['keepOriginal']=='Yes';
 
 		if (!file_exists($target_dir))
-			mkdir($target_dir, $new_folder_permissions);
+			mkdir($target_dir, $new_folder_permissions, true);
 		if (!file_exists($target_dir . 'thumbs'))
-			mkdir($target_dir . 'thumbs', $new_folder_permissions);
+			mkdir($target_dir . 'thumbs', $new_folder_permissions, true);
 		if ($keepOriginal && !file_exists($target_dir . 'original'))
-			mkdir($target_dir . 'original', $new_folder_permissions);
+			mkdir($target_dir . 'original', $new_folder_permissions, true);
 	}
 
 
