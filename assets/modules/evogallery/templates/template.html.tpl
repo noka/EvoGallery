@@ -10,6 +10,7 @@
 	<link rel="stylesheet" type="text/css" media="screen" href="[+base_url+]assets/modules/evogallery/js/tags/tags.css">
 	<script type="text/javascript" src="[+base_url+]assets/modules/evogallery/js/jquery-1.8.3.min.js"></script>
 	<script type="text/javascript" src="[+base_url+]assets/modules/evogallery/js/jquery-ui-1.11.4.custom.min.js"></script>
+  <script type="text/javascript" src="[+base_url+]assets/modules/evogallery/js/jquery.ui.touch-punch.min.js"></script>
 	<script type="text/javascript" src="[+base_url+]assets/modules/evogallery/js/tools.overlay.1.1.2.min.js"></script>
 	<script type="text/javascript" src="[+base_url+]assets/modules/evogallery/js/dropzone/min/dropzone.min.js"></script>
 	<script type="text/javascript" src="[+base_url+]assets/modules/evogallery/js/tags/tags.js"></script>
