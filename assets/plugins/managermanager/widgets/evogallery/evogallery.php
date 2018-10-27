@@ -27,8 +27,7 @@ function mm_widget_evogallery($moduleid, $title='', $roles='', $templates='') {
 		else
 			$iframecontent = '<p class="warning">'.$_lang['mm_save_required'].'</p>';
 		
-		mm_createTab($title, 'evogallery', '', '', '<h3>'.$_lang['mm_manage_images'].'</h3>', '100%');
-		$output = "\$j('#table-evogallery').append('<tr><td>$iframecontent</td></tr>');";
+		mm_createTab($title, 'evogallery', '', '', '<h3>'.$_lang['mm_manage_images'].'</h3>'.$iframecontent, '100%');
 		
 	} // end if
 	
