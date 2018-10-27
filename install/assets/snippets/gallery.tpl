@@ -87,10 +87,10 @@ $params['itemTplAlt'] = isset($itemTplAlt) ? $itemTplAlt : '';
 $params['itemAltNum'] = isset($itemAltNum) ? $itemAltNum : '2';
 	// Modifier for the alternate thumbnail/image (defaults to every second item)
 
-$params['galleriesUrl'] = isset($galleriesUrl) ? $galleriesUrl : $modx->config['base_url'] . 'content/images/galleries/';
+$params['galleriesUrl'] = isset($galleriesUrl) ? $galleriesUrl : $modx->config['base_url'] . 'assets/images/galleries/';
 	// URL to the galleries directory (should contain folders with the Id of the document, with a thumbs/ folder within each document's gallery)
 
-$params['galleriesPath'] = isset($galleriesPath) ? $galleriesPath : $modx->config['base_path'] . 'content/images/galleries/';
+$params['galleriesPath'] = isset($galleriesPath) ? $galleriesPath : $modx->config['base_path'] . 'assets/images/galleries/';
 	// Path to the galleries directory
 
 $params['snippetUrl'] = isset($snippetUrl) ? $snippetUrl : $modx->config['base_url'] . 'assets/snippets/evogallery/';

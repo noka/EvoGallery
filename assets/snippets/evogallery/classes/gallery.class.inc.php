@@ -198,7 +198,9 @@ class Gallery{
 
            // resource data
 					foreach ($row as $name => $value){ $item_placeholders[$name]=trim($value); }
-					foreach ($row_tvs as $name => $value){ $item_placeholders[$name]=trim($value); }
+
+					if(is_array($row_tvs) && !empty($row_tvs))
+						foreach ($row_tvs as $name => $value){ $item_placeholders[$name]=trim($value); }
 
     				if(!empty($item_tpl_first) && $count == 1){
         				$items .= $modx->parseText($item_tpl_first,$item_placeholders);
